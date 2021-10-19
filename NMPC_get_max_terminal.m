@@ -1,4 +1,4 @@
-function [P, K, alpha] = NMPC_get_max_terminal (mu, Q, R, ucon, xcon, alpha)
+function [P, K, alpha1] = NMPC_get_max_terminal (mu, Q, R, ucon, xcon, alpha)
 %% On the terminal region of model predictive control for non-linear systems with input/state constraints (2003)
 % Get the maximal terminal region By Zehua Jia, jiazehua@sjtu.edu.cn
 
@@ -38,17 +38,14 @@ xmax = xcon;
 xmin = -xcon;
 %% LDI approximation within the selected set x <= 2
 N=8; % The number of LDI 
-A(:,:,1) = [(1 - mu) * umin, 1; 1, -4 * (1 - mu) * umin]; A(:,:,2) = [(1 - mu) * umin, 1; 1, -4 * (1 - mu) * umin]; % minimum u
-A(:,:,3) = [(1 - mu) * umin, 1; 1, -4 * (1 - mu) * umin]; A(:,:,4) = [(1 - mu) * umin, 1; 1, -4 * (1 - mu) * umin]; % minimum u
-A(:,:,5) = [(1 - mu) * umax, 1; 1, -4 * (1 - mu) * umax]; A(:,:,6) = [(1 - mu) * umax, 1; 1, -4 * (1 - mu) * umax]; % maximum u
-A(:,:,7) = [(1 - mu) * umax, 1; 1, -4 * (1 - mu) * umax]; A(:,:,8) = [(1 - mu) * umax, 1; 1, -4 * (1 - mu) * umax]; % maximum u
+A = [0, 1; 1, 0];
 % B: (x1, x2) in (min,min),(min,max),(max,min)(max,max) with minimal u
 B(:,1) = [mu + (1 - mu) * xmin; mu - 4 * (1 - mu) * xmin]; B(:,2) = [mu + (1 - mu) * xmin; mu - 4 * (1 - mu) * xmax]; 
 B(:,3) = [mu + (1 - mu) * xmax; mu - 4 * (1 - mu) * xmin]; B(:,4) = [mu + (1 - mu) * xmax; mu - 4 * (1 - mu) * xmax]; 
 B(:,5) = [mu + (1 - mu) * xmin; mu - 4 * (1 - mu) * xmin]; B(:,6) = [mu + (1 - mu) * xmin; mu - 4 * (1 - mu) * xmax]; 
 B(:,7) = [mu + (1 - mu) * xmax; mu - 4 * (1 - mu) * xmin]; B(:,8) = [mu + (1 - mu) * xmax; mu - 4 * (1 - mu) * xmax]; % (x1, x2) in (min,min),(min,max),(max,min)(max,max) with maximal u
 for i = 1:N
-    F(:,:,i) = [A(:,:,i), B(:,i)];
+    F(:,:,i) = [A, B(:,i)];
 end
 
 %% Solve the optimization problem using YALMIP
@@ -84,7 +81,8 @@ for i = 1:N
 end
 
 for i = 1:Nc
-    MAT2(:,:,i) = [1, c(i, :) * W1 + d(i) * W2; (c(i, :) * W1 + d(i) * W2)', W1]; % Multiplying alpha in both sides in LMI (20)
+     MAT2(:,:,i) = [1, c(i, :) * W1 + d(i) * W2; (c(i, :) * W1 + d(i) * W2)', W1]; % Multiplying alpha in both sides in LMI (20)
+%     MAT2(:,:,i) = [W3, (c(i, :) * W1 + d(i) * W2)'; c(i, :) * W1 + d(i) * W2, alpha0]; % Multiplying alpha in both sides in LMI (20)
 end
 
 const = [];
@@ -111,7 +109,7 @@ W1 = double(W1) / double(alpha0);
 W2 = double(W2) / double(alpha0);
 P = W1^(-1);
 K = W2 * W1^(-1);
-alpha = double(alpha0);
+alpha1 = double(alpha0);
 
 %% Plot the obtained ellipsoid (terminal region)
 % draw_ellip(P, alpha, 'k')
